@@ -2,7 +2,7 @@
 
 static const char _DLM[3] = " \t";
 
-bool _new_fd_table(FILE *from, FILE *to, Command *c) {
+bool _new_fd_table(int from, int to, Command *c) {
     FDTable **f = &(c->fd_table);
     while(*f) {
         f = &((*f)->next);
@@ -44,7 +44,7 @@ char *_get_next_token(char *token) {
 bool _command_create(char *name, Command **c) {
     Argument *a;
     char *token;
-    FILE *f;
+    int fd;
 
     if(!_command_malloc(name, c)) {
         return false;
@@ -61,8 +61,8 @@ bool _command_create(char *name, Command **c) {
                     delete_command(*c);
                     return false;
                 }
-                f = fopen(token, "r");
-                if(!f || !_new_fd_table(stdin, f, *c)) {
+                fd = open(token, O_RDONLY);
+                if(fd < 0 || !_new_fd_table(0, fd, *c)) {
                     delete_command(*c);
                     return false;
                 }
@@ -73,8 +73,8 @@ bool _command_create(char *name, Command **c) {
                     delete_command(*c);
                     return false;
                 }
-                f = fopen(token, "w");
-                if(!f || !_new_fd_table(stdout, f, *c)) {
+                fd = open(token, O_WRONLY, O_CREAT);
+                if(fd < 0 || !_new_fd_table(1, fd, *c)) {
                     delete_command(*c);
                     return false;
                 }
@@ -146,11 +146,11 @@ void delete_command(Command *c) {
         }
         f = c->fd_table;
         while(f) {
-            if(fileno(f->from) > fileno(stderr)) {
-                fclose(f->from);
+            if(f->from > 2) {
+                close(f->from);
             }
-            if(fileno(f->to) > fileno(stderr)) {
-                fclose(f->to);
+            if(f->to > 2) {
+                close(f->to);
             }
             g = f->next;
             free(f);

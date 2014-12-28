@@ -2,6 +2,7 @@
 #define SHELL_COMMAND_H_INCLUDED
 
 #include <unistd.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -14,8 +15,8 @@ typedef struct Argument_tag {
 } Argument;
 
 typedef struct FDTable_tag {
-    FILE               *from;
-    FILE               *to;
+    int                from;
+    int                to;
     struct FDTable_tag *next;
 } FDTable;
 
