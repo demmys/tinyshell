@@ -2,11 +2,17 @@
 #define SHELL_COMMAND_H_INCLUDED
 
 #include <stdio.h>
+#include <unistd.h>
 #include "buffer.h"
 
+typedef struct Argument_tag {
+    char *arg;
+    struct Argument_tag *next;
+} Argument;
+
 typedef struct Command_tag {
-    char *contents;
-    struct Command_tag *next;
+    char *name;
+    Argument *arguments;
 } Command;
 
 bool new_command(Command **c);

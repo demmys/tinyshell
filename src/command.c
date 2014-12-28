@@ -3,7 +3,7 @@
 bool new_command(Command **c) {
     static const char dlm[3] = " \t";
 
-    Command *d;
+    Argument *a;
     Buffer *b;
     char ch, *line, *arg;
 
@@ -17,38 +17,54 @@ bool new_command(Command **c) {
     line = buffer_restore(b);
     delete_buffer(b);
 
-    *c = NULL;
-    for(arg = strtok(line, dlm); arg; arg = strtok(NULL, dlm)) {
-        if(*c) {
-            d->next = (Command *)malloc(sizeof(Command));
-            d = d->next;
-        } else {
-            *c = (Command *)malloc(sizeof(Command));
-            d = *c;
+    arg = strtok(line, dlm);
+    if(!arg) {
+        return false;
+    }
+    *c = (Command *)malloc(sizeof(Command));
+    (*c)->name = arg;
+    (*c)->arguments = NULL;
+
+    while(true) {
+        arg = strtok(NULL, dlm);
+        if(!arg) {
+            break;
         }
-        if(!d) {
+        if((*c)->arguments) {
+            a->next = (Argument *)malloc(sizeof(Argument));
+            a = a->next;
+        } else {
+            (*c)->arguments = (Argument *)malloc(sizeof(Argument));
+            a = (*c)->arguments;
+        }
+        if(!a) {
+            delete_command(*c);
             return false;
         }
-        d->contents = arg;
-        d->next = NULL;
+        a->arg = arg;
+        a->next = NULL;
     }
     return true;
 }
 
 void delete_command(Command *c) {
-    Command *d;
-    free(c->contents);
-    while(c) {
-        d = c->next;
-        free(c);
-        c = d;
+    Argument *a, *b;
+    a = c->arguments;
+    free(c->name);
+    free(c);
+    while(a) {
+        b = a->next;
+        free(a);
+        a = b;
     }
 }
 
 int command_execute(Command *c) {
-    while(c) {
-        printf("|%s|\n", c->contents);
-        c = c->next;
+    Argument *a = c->arguments;
+    printf("|%s|\n", c->name);
+    while(a) {
+        printf("|%s|\n", a->arg);
+        a = a->next;
     }
     return 0;
 }
