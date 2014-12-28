@@ -6,6 +6,7 @@ bool new_command(Command **c) {
     Argument *a;
     Buffer *b;
     char ch, *line, *arg;
+    int argc;
 
     if(!new_buffer(512, &b)) {
         return false;
@@ -23,19 +24,19 @@ bool new_command(Command **c) {
     }
     *c = (Command *)malloc(sizeof(Command));
     (*c)->name = arg;
-    (*c)->arguments = NULL;
+    (*c)->argv = NULL;
 
-    while(true) {
+    for(argc = 0; true; ++argc) {
         arg = strtok(NULL, dlm);
         if(!arg) {
             break;
         }
-        if((*c)->arguments) {
+        if((*c)->argv) {
             a->next = (Argument *)malloc(sizeof(Argument));
             a = a->next;
         } else {
-            (*c)->arguments = (Argument *)malloc(sizeof(Argument));
-            a = (*c)->arguments;
+            (*c)->argv = (Argument *)malloc(sizeof(Argument));
+            a = (*c)->argv;
         }
         if(!a) {
             delete_command(*c);
@@ -44,12 +45,13 @@ bool new_command(Command **c) {
         a->arg = arg;
         a->next = NULL;
     }
+    (*c)->argc = argc;
     return true;
 }
 
 void delete_command(Command *c) {
     Argument *a, *b;
-    a = c->arguments;
+    a = c->argv;
     free(c->name);
     free(c);
     while(a) {
@@ -59,12 +61,20 @@ void delete_command(Command *c) {
     }
 }
 
-int command_execute(Command *c) {
-    Argument *a = c->arguments;
-    printf("|%s|\n", c->name);
-    while(a) {
-        printf("|%s|\n", a->arg);
+void command_execute(Command *c) {
+    Argument *a;
+    char **argv = (char **)malloc(sizeof(char *) * (c->argc + 2));
+    int i;
+
+    argv[0] = c->name;
+    a = c->argv;
+    for(i = 1; a; ++i) {
+        argv[i] = a->arg;
         a = a->next;
     }
-    return 0;
+    argv[i] = NULL;
+
+    execvp(c->name, argv);
+    // to free garbage which remained when exec failed
+    free(argv);
 }

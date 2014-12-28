@@ -12,11 +12,12 @@ typedef struct Argument_tag {
 
 typedef struct Command_tag {
     char *name;
-    Argument *arguments;
+    int argc;
+    Argument *argv;
 } Command;
 
 bool new_command(Command **c);
 void delete_command(Command *c);
-int command_execute(Command *c);
+void command_execute(Command *c);
 
 #endif
