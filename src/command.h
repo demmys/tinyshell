@@ -9,7 +9,8 @@ typedef struct Command_tag {
     struct Command_tag *next;
 } Command;
 
-Command *new_command();
+bool new_command(Command **c);
 void delete_command(Command *c);
+int command_execute(Command *c);
 
 #endif

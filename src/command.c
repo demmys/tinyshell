@@ -1,14 +1,14 @@
 #include "command.h"
 
-Command *new_command() {
+bool new_command(Command **c) {
     static const char dlm[3] = " \t";
 
-    Command *c, *d;
+    Command *d;
     Buffer *b;
     char ch, *line, *arg;
 
     if(!new_buffer(512, &b)) {
-        return NULL;
+        return false;
     }
 
     for(ch = getchar(); ch != '\n'; ch = getchar()) {
@@ -17,19 +17,22 @@ Command *new_command() {
     line = buffer_restore(b);
     delete_buffer(b);
 
-    c = NULL;
+    *c = NULL;
     for(arg = strtok(line, dlm); arg; arg = strtok(NULL, dlm)) {
-        if(c) {
+        if(*c) {
             d->next = (Command *)malloc(sizeof(Command));
             d = d->next;
         } else {
-            c = (Command *)malloc(sizeof(Command));
-            d = c;
+            *c = (Command *)malloc(sizeof(Command));
+            d = *c;
+        }
+        if(!d) {
+            return false;
         }
         d->contents = arg;
         d->next = NULL;
     }
-    return c;
+    return true;
 }
 
 void delete_command(Command *c) {
@@ -40,4 +43,12 @@ void delete_command(Command *c) {
         free(c);
         c = d;
     }
+}
+
+int command_execute(Command *c) {
+    while(c) {
+        printf("|%s|\n", c->contents);
+        c = c->next;
+    }
+    return 0;
 }
