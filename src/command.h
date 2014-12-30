@@ -14,24 +14,14 @@ typedef struct Argument_tag {
     struct Argument_tag *next;
 } Argument;
 
-typedef struct FDTable_tag {
-    int                from;
-    int                to;
-    struct FDTable_tag *next;
-} FDTable;
-
-typedef enum {
-    YIELD_NONE,
-    YIELD_BACKGROUND,
-    YIELD_PIPE
-} YieldType;
-
 typedef struct Command_tag {
     char               *name;
     int                argc;
     Argument           *argv;
-    FDTable            *fd_table;
-    YieldType          yield_type;
+    int                input;
+    int                output;
+    bool               pipe;
+    bool               background;
     struct Command_tag *next;
 } Command;
 

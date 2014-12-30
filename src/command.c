@@ -2,22 +2,7 @@
 
 static const char _DLM[3] = " \t";
 
-bool _new_fd_table(int from, int to, Command *c) {
-    FDTable **f = &(c->fd_table);
-    while(*f) {
-        f = &((*f)->next);
-    }
-    *f = (FDTable *)malloc(sizeof(FDTable));
-    if(!*f) {
-        return false;
-    }
-    (*f)->from = from;
-    (*f)->to = to;
-    (*f)->next = NULL;
-    return true;
-}
-
-bool _command_malloc(char *name, Command **c) {
+static bool _command_malloc(char *name, Command **c) {
     Command *d;
     *c = (Command *)malloc(sizeof(Command));
     if(!*c) {
@@ -27,13 +12,14 @@ bool _command_malloc(char *name, Command **c) {
     d->name = name;
     d->argc = 0;
     d->argv = NULL;
-    d->fd_table = NULL;
-    d->yield_type = YIELD_NONE;
+    d->input = 0;
+    d->output = 1;
+    d->background = false;
     d->next = NULL;
     return true;
 }
 
-char *_get_next_token(char *token) {
+static char *_command_get_next_token(char *token) {
     if(token[1] == '\0') {
         return strtok(NULL, _DLM);
     } else {
@@ -41,10 +27,11 @@ char *_get_next_token(char *token) {
     }
 }
 
-bool _command_create(char *name, Command **c) {
+static bool _command_create(char *name, Command **c) {
     Argument *a;
     char *token;
     int fd;
+    int pipefd[2];
 
     if(!_command_malloc(name, c)) {
         return false;
@@ -56,32 +43,38 @@ bool _command_create(char *name, Command **c) {
         }
         switch(token[0]) {
             case '<':
-                token = _get_next_token(token);
+                token = _command_get_next_token(token);
                 if(!token) {
                     delete_command(*c);
                     return false;
                 }
                 fd = open(token, O_RDONLY);
-                if(fd < 0 || !_new_fd_table(0, fd, *c)) {
+                if(fd < 0) {
                     delete_command(*c);
                     return false;
                 }
+                (*c)->input = fd;
                 break;
             case '>':
-                token = _get_next_token(token);
+                token = _command_get_next_token(token);
                 if(!token) {
                     delete_command(*c);
                     return false;
                 }
-                fd = open(token, O_WRONLY, O_CREAT);
-                if(fd < 0 || !_new_fd_table(1, fd, *c)) {
+                fd = open(token, O_WRONLY | O_CREAT, 0640);
+                if(fd < 0) {
                     delete_command(*c);
                     return false;
                 }
+                (*c)->output = fd;
                 break;
             case '|':
-                (*c)->yield_type = YIELD_PIPE;
-                token = _get_next_token(token);
+                if(pipe(pipefd) < 0) {
+                    delete_command(*c);
+                    return false;
+                }
+                (*c)->output = pipefd[1];
+                token = _command_get_next_token(token);
                 if(!token) {
                     delete_command(*c);
                     return false;
@@ -90,10 +83,12 @@ bool _command_create(char *name, Command **c) {
                     delete_command(*c);
                     return false;
                 }
+                (*c)->next->input = pipefd[0];
+                (*c)->pipe = true;
                 return true;
             case '&':
-                (*c)->yield_type = YIELD_BACKGROUND;
-                token = _get_next_token(token);
+                (*c)->background = true;
+                token = _command_get_next_token(token);
                 if(!token) {
                     return true;
                 }
@@ -134,7 +129,6 @@ bool new_command(char *line, Command **c) {
 void delete_command(Command *c) {
     Command *d;
     Argument *a, *b;
-    FDTable *f, *g;
 
     free(c->name);
     while(c) {
@@ -143,18 +137,6 @@ void delete_command(Command *c) {
             b = a->next;
             free(a);
             a = b;
-        }
-        f = c->fd_table;
-        while(f) {
-            if(f->from > 2) {
-                close(f->from);
-            }
-            if(f->to > 2) {
-                close(f->to);
-            }
-            g = f->next;
-            free(f);
-            f = g;
         }
         d = c->next;
         free(c);
