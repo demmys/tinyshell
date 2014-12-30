@@ -2,7 +2,7 @@
 
 static const char _DLM[3] = " \t";
 
-static bool _command_malloc(char *name, Command **c) {
+static bool _malloc_command(char *name, Command **c) {
     Command *d;
     *c = (Command *)malloc(sizeof(Command));
     if(!*c) {
@@ -19,7 +19,7 @@ static bool _command_malloc(char *name, Command **c) {
     return true;
 }
 
-static char *_command_get_next_token(char *token) {
+static char *_get_next_token(char *token) {
     if(token[1] == '\0') {
         return strtok(NULL, _DLM);
     } else {
@@ -27,13 +27,13 @@ static char *_command_get_next_token(char *token) {
     }
 }
 
-static bool _command_create(char *name, Command **c) {
+static bool _create_command(char *name, Command **c) {
     Argument *a;
     char *token;
     int fd;
     int pipefd[2];
 
-    if(!_command_malloc(name, c)) {
+    if(!_malloc_command(name, c)) {
         return false;
     }
     while(true) {
@@ -43,7 +43,7 @@ static bool _command_create(char *name, Command **c) {
         }
         switch(token[0]) {
             case '<':
-                token = _command_get_next_token(token);
+                token = _get_next_token(token);
                 if(!token) {
                     delete_command(*c);
                     return false;
@@ -56,7 +56,7 @@ static bool _command_create(char *name, Command **c) {
                 (*c)->input = fd;
                 break;
             case '>':
-                token = _command_get_next_token(token);
+                token = _get_next_token(token);
                 if(!token) {
                     delete_command(*c);
                     return false;
@@ -74,12 +74,12 @@ static bool _command_create(char *name, Command **c) {
                     return false;
                 }
                 (*c)->output = pipefd[1];
-                token = _command_get_next_token(token);
+                token = _get_next_token(token);
                 if(!token) {
                     delete_command(*c);
                     return false;
                 }
-                if(!_command_create(token, &((*c)->next))) {
+                if(!_create_command(token, &((*c)->next))) {
                     delete_command(*c);
                     return false;
                 }
@@ -88,11 +88,11 @@ static bool _command_create(char *name, Command **c) {
                 return true;
             case '&':
                 (*c)->background = true;
-                token = _command_get_next_token(token);
+                token = _get_next_token(token);
                 if(!token) {
                     return true;
                 }
-                if(!_command_create(token, &((*c)->next))) {
+                if(!_create_command(token, &((*c)->next))) {
                     delete_command(*c);
                     return false;
                 }
@@ -123,7 +123,7 @@ bool new_command(char *line, Command **c) {
     if(!name) {
         return false;
     }
-    return _command_create(name, c);
+    return _create_command(name, c);
 }
 
 void delete_command(Command *c) {
@@ -146,9 +146,10 @@ void delete_command(Command *c) {
 
 void command_execute(Command *c) {
     Argument *a;
-    char **argv = (char **)malloc(sizeof(char *) * (c->argc + 2));
+    char **argv;
     int i;
 
+    argv = (char **)malloc(sizeof(char *) * (c->argc + 2));
     argv[0] = c->name;
     a = c->argv;
     for(i = 1; a; ++i) {
